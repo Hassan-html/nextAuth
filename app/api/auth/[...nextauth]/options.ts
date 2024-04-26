@@ -1,23 +1,35 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import { NextAuthOptions } from "next-auth";
-
+import { connect } from "@/app/models/dbconfig/mongoCon";
+import { staffModel } from "@/app/models/schemas/TeacherSchema";
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       id: "credentials",
       name: "Credentials",
       credentials: {
-        username: { label: "Username", type: "text", placeholder: "jsmith" },
-        password: { label: "Password", type: "password" },
+        email: {
+          label: "email",
+          type: "email",
+          placeholder: "email",
+        },
+        password: { label: "password", type: "password" },
       },
       async authorize(credentials: any): Promise<any> {
-        const user = credentials;
-        console.log(user);
+        const { email, psw } = await credentials;
+        console.log("Email and password from next auth: " + email + psw);
+
+        await connect();
+        const user = await staffModel.findOne({ email: email });
         if (user) {
-          return user;
+          if (user.psw === psw) {
+            return user;
+          } else {
+            throw new Error("Incorrect password");
+          }
         } else {
-          console.log("user not found");
-          return null;
+          console.log("Not found");
+          throw new Error("User not found");
         }
       },
     }),
@@ -49,6 +61,9 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
+  },
+  pages: {
+    signIn: "/pages/account/login",
   },
 
   secret: process.env.NEXTAUTH_SECRET,
