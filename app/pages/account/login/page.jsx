@@ -15,6 +15,7 @@ export default function page() {
       const user = await signIn("credentials", { email, psw, redirect: false })
         .then((res) => {
           alert("Loged in press ok to login pannel");
+          window.location.reload()
         })
         .catch((err) => {
           alert("An Error Occurd while login try refresing the page");
