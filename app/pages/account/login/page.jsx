@@ -14,10 +14,11 @@ export default function page() {
     if ((email, psw)) {
       const user = await signIn("credentials", { email, psw, redirect: false })
         .then((res) => {
-          alert(res);
+          alert("log in press ok to redirect to pannel");
+          window.location.reload()
         })
         .catch((err) => {
-          alert(err);
+          alert("An Error Occurd while login try refresing the page");
         });
     } else {
       alert("please fill all the fields");
