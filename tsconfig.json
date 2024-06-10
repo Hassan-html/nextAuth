@@ -27,7 +27,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "app/models/dbconfig/mongoCon.js",
-    "app/pages/Teacher/layout.jsx"
+    "app/pages/Teacher/layout.ts"
   ],
   "exclude": ["node_modules"]
 }
