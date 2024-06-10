@@ -15,6 +15,7 @@ export default function page() {
       const user = await signIn("credentials", { email, psw, redirect: false })
         .then((res) => {
           alert(res);
+          window.location.reload()
         })
         .catch((err) => {
           alert(err);
