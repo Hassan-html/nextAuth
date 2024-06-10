@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const url = request.url;
   const token = await getToken({ req: request });
   const auth = token?.Role;
-  console.log(token, auth);
+  // console.log(token, auth);
   if (token && url.includes("/account")) {
     if (
       auth === "teacher" ||
@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
     ) {
       return NextResponse.redirect(new URL("/pages/staff", request.url));
     } else if (
-      auth === "admin" ||
+      auth === "adminAccount" ||
       url.includes("/staff") ||
       url.includes("/Teacher")
     ) {
