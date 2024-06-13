@@ -1,286 +1,394 @@
-"use client"
+"use client";
+
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Modal, Button } from "flowbite-react";
-import Link from "next/link";
-
+import { Table, Dropdown, Button, Modal } from "flowbite-react";
+import '../styles/style.css';
 const StudentsTable = () => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState("");
-  const [sortOrder, setSortOrder] = useState("asc");
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentStudent, setCurrentStudent] = useState(null);
+  const [searchName, setSearchName] = useState("");
+  const [searchContact, setSearchContact] = useState("");
+  const [searchTeacher, setSearchTeacher] = useState("");
+  const [showOnlyDue, setShowOnlyDue] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const response = await axios.post("/api/students",{});
-        setStudents(response.data.data);
-        setFilteredStudents(response.data.data);
-      } catch (error) {
-        console.error("Error fetching students:", error);
-      }
-    };
-    fetchStudents();
+    axios.post("/api/students",[]).then((response) => {
+      setStudents(response.data.data);
+      setFilteredStudents(response.data.data);
+      console.log(response.data.data)
+    });
   }, []);
 
-  useEffect(() => {
-    let updatedStudents = [...students];
+  const handleFilter = () => {
+    let filtered = students;
 
-    if (searchQuery) {
-      updatedStudents = updatedStudents.filter(
-        (student) =>
-          student.studentName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          student.contactNumber
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
+    if (searchName) {
+      filtered = filtered.filter((student) =>
+        student.studentName.toLowerCase().includes(searchName.toLowerCase())
       );
     }
 
-    if (sortField) {
-      updatedStudents.sort((a, b) => {
-        const aValue = a[sortField];
-        const bValue = b[sortField];
-
-        if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-        if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
-        return 0;
-      });
+    if (searchContact) {
+      filtered = filtered.filter((student) =>
+        student.contactNumber.includes(searchContact)
+      );
     }
 
-    setFilteredStudents(updatedStudents);
-  }, [students, searchQuery, sortField, sortOrder]);
-
-  const handleSort = (field) => {
-    const order = field === sortField && sortOrder === "asc" ? "desc" : "asc";
-    setSortField(field);
-    setSortOrder(order);
-  };
-
-  const openModal = (student) => {
-    setCurrentStudent(student);
-    setIsOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsOpen(false);
-    setCurrentStudent(null);
-  };
-
-  const handleDelete = async (studentId) => {
-    try {
-      await axios.delete(`/api/deleteStudent/${studentId}`);
-      setStudents(students.filter((student) => student._id !== studentId));
-    } catch (error) {
-      console.error("Error deleting student:", error);
+    if (searchTeacher) {
+      filtered = filtered.filter((student) =>
+        student.instructor.toLowerCase().includes(searchTeacher.toLowerCase())
+      );
     }
+
+    if (showOnlyDue) {
+      const currentDate = new Date();
+      filtered = filtered.filter((student) =>
+        student.monthlyFeeDates.some((feeDate, index) => {
+          const dueDate = new Date(feeDate);
+          return (
+            dueDate < currentDate &&
+            (!student.feePaymentDates || !student.feePaymentDates[index])
+          );
+        })
+      );
+    }
+
+    setFilteredStudents(filtered);
+  };
+
+  useEffect(() => {
+    handleFilter();
+  }, [searchName, searchContact, searchTeacher, showOnlyDue, students]);
+
+  const openEditModal = (student) => {
+    setEditStudent({ ...student });
+    setEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+    setEditStudent(null);
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`/api/editStudent/${currentStudent._id}`, currentStudent);
-      setStudents(
-        students.map((student) =>
-          student._id === currentStudent._id ? currentStudent : student
+      await axios.post(`/api/students/edit`, editStudent);
+      setStudents((prev) =>
+        prev.map((student) =>
+          student._id === editStudent._id ? editStudent : student
         )
       );
-      closeModal();
+      closeEditModal();
     } catch (error) {
       console.error("Error updating student:", error);
     }
   };
 
-  return (
-    <div className="p-2 overflow-auto">
-      <div className="m-[20px]">
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEditStudent((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-      <Link href="/pages/Teacher/students/add" className="text-2xl font-bold bg-black     mb-4 text-white px-4 py-2 rounded-lg">Add Students</Link>
+  return (
+    <div className="container mx-auto py-4">
+      <div className="mb-4 flex flex-col md:flex-row gap-4">
+        <input
+          type="text"
+          placeholder="Search by Name"
+          value={searchName}
+          onChange={(e) => setSearchName(e.target.value)}
+          className="w-full md:w-1/4 p-2 border border-gray-300 rounded-md"
+        />
+        <input
+          type="text"
+          placeholder="Search by Contact"
+          value={searchContact}
+          onChange={(e) => setSearchContact(e.target.value)}
+          className="w-full md:w-1/4 p-2 border border-gray-300 rounded-md"
+        />
+        <input
+          type="text"
+          placeholder="Search by Teacher"
+          value={searchTeacher}
+          onChange={(e) => setSearchTeacher(e.target.value)}
+          className="w-full md:w-1/4 p-2 border border-gray-300 rounded-md"
+        />
+        <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={showOnlyDue}
+            onChange={(e) => setShowOnlyDue(e.target.checked)}
+          />
+          <span>Show Only Due Fees</span>
+        </label>
       </div>
-      <input
-        type="text"
-        placeholder="Search by name or contact number"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="mb-4 p-2 border rounded"
-      />
-      <table className="min-w-full w- bg-white border border-gray-200">
-        <thead>
-          <tr>
-            <th
-              onClick={() => handleSort("studentName")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Student Name
-            </th>
-            <th
-              onClick={() => handleSort("guardianName")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Guardian Name
-            </th>
-            <th
-              onClick={() => handleSort("contactNumber")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Contact Number
-            </th>
-            <th
-              onClick={() => handleSort("course")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Course
-            </th>
-            <th
-              onClick={() => handleSort("courseDuration")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Course Duration
-            </th>
-            <th
-              onClick={() => handleSort("instructor")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Instructor
-            </th>
-            <th
-              onClick={() => handleSort("classStartTime")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Class Start Time
-            </th>
-            <th
-              onClick={() => handleSort("admissionDate")}
-              className="py-2 px-4 border-b cursor-pointer"
-            >
-              Admission Date
-            </th>
-            <th className="py-2 px-4 border-b">Monthly Fee Dates</th>
-            <th className="py-2 px-4 border-b">Fee Payment Dates</th>
-            <th className="py-2 px-4 border-b">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+
+      <Table>
+        <Table.Head>
+          <Table.HeadCell>Name</Table.HeadCell>
+          <Table.HeadCell>Contact</Table.HeadCell>
+          <Table.HeadCell>Teacher</Table.HeadCell>
+          <Table.HeadCell>Admission Date</Table.HeadCell>
+          <Table.HeadCell>Fees</Table.HeadCell>
+          <Table.HeadCell>Actions</Table.HeadCell>
+        </Table.Head>
+        <Table.Body>
           {filteredStudents.map((student) => (
-            <tr key={student._id}>
-              <td className="py-2 px-4 border-b">{student.studentName}</td>
-              <td className="py-2 px-4 border-b">{student.guardianName}</td>
-              <td className="py-2 px-4 border-b">{student.contactNumber}</td>
-              <td className="py-2 px-4 border-b">{student.course}</td>
-              <td className="py-2 px-4 border-b">{student.courseDuration}</td>
-              <td className="py-2 px-4 border-b">{student.instructor}</td>
-              <td className="py-2 px-4 border-b">{student.classStartTime}</td>
-              <td className="py-2 px-4 border-b">
+            <Table.Row
+              key={student._id}
+              className={
+                student.monthlyFeeDates.some(
+                  (feeDate, index) =>
+                    new Date(feeDate) < new Date() &&
+                    (!student.feePaymentDates ||
+                      !student.feePaymentDates[index])
+                )
+                  ? "bg-red-600 text-white"
+                  : " text-black"
+              }
+            >
+              <Table.Cell>{student.studentName}</Table.Cell>
+              <Table.Cell>{student.contactNumber}</Table.Cell>
+              <Table.Cell>{student.instructor}</Table.Cell>
+              <Table.Cell>
                 {new Date(student.admissionDate).toLocaleDateString()}
-              </td>
-              <td className="py-2 px-4 border-b">
-                <ul>
-                  {student.monthlyFeeDates &&
-                    student.monthlyFeeDates.map((date, index) => (
-                      <li key={index}>{new Date(date).toLocaleDateString()}</li>
-                    ))}
-                </ul>
-              </td>
-              <td className="py-2 px-4 border-b">
-                <ul>
-                  {student.feePaymentDates &&
-                    student.feePaymentDates.map((date, index) => (
-                      <li key={index}>
-                        {date
-                          ? new Date(date).toLocaleDateString()
-                          : "Not Paid"}
-                      </li>
-                    ))}
-                </ul>
-              </td>
-              <td className="py-2 px-4 border-b">
-                <button
-                  onClick={() => openModal(student)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded mr-2"
+              </Table.Cell>
+              <Table.Cell
+                className={
+                  student.monthlyFeeDates.some(
+                    (feeDate, index) =>
+                      new Date(feeDate) < new Date() &&
+                      (!student.feePaymentDates ||
+                        !student.feePaymentDates[index])
+                  )
+                    ? ""
+                    : " custom"
+                }
+              >
+                <Dropdown label="View Fees">
+                  {student.monthlyFeeDates.map((feeDate, index) => (
+                    <Dropdown.Item key={index}>
+                      <div className="flex justify-between items-center">
+                        <span>{new Date(feeDate).toLocaleDateString()}</span>
+                        <span>
+                          {student.feePaymentDates &&
+                          student.feePaymentDates[index]
+                            ? `: Paid on = ${new Date(
+                                student.feePaymentDates[index]
+                              ).toLocaleDateString()}`
+                            : ": Due"}
+                        </span>
+                      </div>
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown>
+              </Table.Cell>
+              <Table.Cell>
+                <Button
+                  className={
+                    student.monthlyFeeDates.some(
+                      (feeDate, index) =>
+                        new Date(feeDate) < new Date() &&
+                        (!student.feePaymentDates ||
+                          !student.feePaymentDates[index])
+                    )
+                      ? "bg-red-600 text-white"
+                      : " text-black"
+                  }
+                  onClick={() => openEditModal(student)}
                 >
                   Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(student._id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
+                </Button>
+                <Button
+                  className={
+                    student.monthlyFeeDates.some(
+                      (feeDate, index) =>
+                        new Date(feeDate) < new Date() &&
+                        (!student.feePaymentDates ||
+                          !student.feePaymentDates[index])
+                    )
+                      ? "bg-red-600 text-white"
+                      : " text-black"
+                  }
+                  onClick={async () => {
+                    await axios.post(`/api/students/delete`,student);
+                    setStudents(students.filter((s) => s._id !== student._id));
+                  }}
                 >
                   Delete
-                </button>
-              </td>
-            </tr>
+                </Button>
+              </Table.Cell>
+            </Table.Row>
           ))}
-        </tbody>
-      </table>
+        </Table.Body>
+      </Table>
 
-      <Modal show={isOpen} onClose={closeModal}>
-        <Modal.Header>Edit Student</Modal.Header>
-        <Modal.Body>
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Student Name
-              </label>
-              <input
-                type="text"
-                value={currentStudent?.studentName || ""}
-                onChange={(e) =>
-                  setCurrentStudent({
-                    ...currentStudent,
-                    studentName: e.target.value,
-                  })
-                }
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Guardian Name
-              </label>
-              <input
-                type="text"
-                value={currentStudent?.guardianName || ""}
-                onChange={(e) =>
-                  setCurrentStudent({
-                    ...currentStudent,
-                    guardianName: e.target.value,
-                  })
-                }
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Contact Number
-              </label>
-              <input
-                type="text"
-                value={currentStudent?.contactNumber || ""}
-                onChange={(e) =>
-                  setCurrentStudent({
-                    ...currentStudent,
-                    contactNumber: e.target.value,
-                  })
-                }
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
-            {/* Add other fields as necessary */}
-            <div className="flex items-center justify-end space-x-4">
-              <Button type="button" onClick={closeModal}>
-                Cancel
-              </Button>
-              <Button type="submit">Save</Button>
-            </div>
-          </form>
-        </Modal.Body>
-      </Modal>
+      {editStudent && (
+        <Modal show={editModalOpen} onClose={closeEditModal}>
+          <Modal.Header>Edit Student</Modal.Header>
+          <Modal.Body>
+            <form onSubmit={handleEditSubmit}>
+              <div>
+                <label>Name</label>
+                <input
+                  type="text"
+                  name="studentName"
+                  value={editStudent.studentName}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Contact</label>
+                <input
+                  type="text"
+                  name="contactNumber"
+                  value={editStudent.contactNumber}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Guardian Name</label>
+                <input
+                  type="text"
+                  name="guardianName"
+                  value={editStudent.guardianName}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Course</label>
+                <input
+                  type="text"
+                  name="course"
+                  value={editStudent.course}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Course Duration</label>
+                <input
+                  type="text"
+                  name="courseDuration"
+                  value={editStudent.courseDuration}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Instructor</label>
+                <input
+                  type="text"
+                  name="instructor"
+                  value={editStudent.instructor}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Class Start Time</label>
+                <input
+                  type="text"
+                  name="classStartTime"
+                  value={editStudent.classStartTime}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label>Admission Date</label>
+                <input
+                  type="date"
+                  name="admissionDate"
+                  value={
+                    new Date(editStudent.admissionDate)
+                      .toISOString()
+                      .split("T")[0]
+                  }
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div className="custom">
+                <label>Monthly Fee Dates</label>
+                <Dropdown label="Edit Fees">
+                  {editStudent.monthlyFeeDates.map((feeDate, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center my-2"
+                    >
+                      <span>{new Date(feeDate).toLocaleDateString()}</span>
+                      <input
+                        type="date"
+                        value={new Date(feeDate).toISOString().split("T")[0]}
+                        onChange={(e) => {
+                          const newFeeDates = [...editStudent.monthlyFeeDates];
+                          newFeeDates[index] = new Date(
+                            e.target.value
+                          ).toISOString();
+                          setEditStudent((prev) => ({
+                            ...prev,
+                            monthlyFeeDates: newFeeDates,
+                          }));
+                        }}
+                        className="ml-2 p-2 border border-gray-300 rounded-md"
+                      />
+                      <input
+                        type="date"
+                        value={
+                          editStudent.feePaymentDates &&
+                          editStudent.feePaymentDates[index]
+                            ? new Date(editStudent.feePaymentDates[index])
+                                .toISOString()
+                                .split("T")[0]
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const newPaymentDates = editStudent.feePaymentDates
+                            ? [...editStudent.feePaymentDates]
+                            : [];
+                          newPaymentDates[index] = new Date(
+                            e.target.value
+                          ).toISOString();
+                          setEditStudent((prev) => ({
+                            ...prev,
+                            feePaymentDates: newPaymentDates,
+                          }));
+                        }}
+                        className="ml-2 p-2 border border-gray-800 rounded-md"
+                      />
+                    </div>
+                  ))}
+                </Dropdown>
+              </div>
+              <div className="flex justify-end space-x-4 mt-4">
+                <Button
+                  className="bg-red-700"
+                  type="button"
+                  onClick={closeEditModal}
+                >
+                  Cancel
+                </Button>
+                <Button className="bg-blue-700" type="submit">
+                  Save
+                </Button>
+              </div>
+            </form>
+          </Modal.Body>
+        </Modal>
+      )}
     </div>
   );
 };
 
 export default StudentsTable;
-
