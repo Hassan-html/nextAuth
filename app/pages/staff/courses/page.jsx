@@ -279,22 +279,12 @@ const CoursesPage = () => {
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <Label htmlFor="courseName" value="Course Name" />
-              <Select
+              <input
                 id="courseName"
                 name="courseName"
-                value={formData.courseName}
                 onChange={handleInputChange}
                 required
-              >
-                <option value="" disabled>
-                  Select Course
-                </option>
-                {courseOptions.map((course, index) => (
-                  <option key={index} value={course}>
-                    {course}
-                  </option>
-                ))}
-              </Select>
+              />
             </div>
             <div className="mb-4">
               <Label htmlFor="instructor" value="Instructor" />

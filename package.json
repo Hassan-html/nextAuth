@@ -21,7 +21,8 @@
     "next-auth": "^4.24.7",
     "react": "^18",
     "react-dom": "^18",
-    "react-icons": "^5.1.0"
+    "react-icons": "^5.1.0",
+    "system": "file:"
   },
   "devDependencies": {
     "@types/node": "^20",
