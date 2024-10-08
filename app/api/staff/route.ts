@@ -88,11 +88,11 @@ export const POST = async (request: Request) => {
       await Student.findByIdAndDelete(id);
       return NextResponse.json({ message: "Student deleted successfully" });
     } else if (action === "fetchStudents") {
-      console.log(data);
       const { filters } = data;
       const query: any = {};
 
       if (filters) {
+        console.log(filters);
         if (filters.cnic) query["cnic"] = filters.cnic;
         if (filters.phone) query["phone"] = filters.phone;
         if (filters.course) query["course"] = filters.course;
@@ -104,7 +104,7 @@ export const POST = async (request: Request) => {
       }
 
       const students = await Student.find(query);
-      console.log(students);
+
       return NextResponse.json({ students });
     } else if (action === "updateFees") {
       const { id, fees } = data as { id: string; fees: Fee[] };

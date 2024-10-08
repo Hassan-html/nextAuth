@@ -1,22 +1,13 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  Button,
-  Label,
-  TextInput,
-  Table,
-  Select,
-  Spinner,
-  Alert,
-  Modal,
-} from "flowbite-react";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-
+import { Button, TextInput } from "flowbite-react";
+import { Label, Table, Select, Spinner, Alert, Modal } from "flowbite-react";
 const StudentManagementPage = () => {
   const [students, setStudents] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   const [filters, setFilters] = useState({
     cnic: "",
     phone: "",
@@ -65,11 +56,8 @@ const StudentManagementPage = () => {
         action: "fetchCourses",
       });
 
-      setInstructors(
-        instructorsResponse.data.filter((user) => user.type === "instructor")
-      );
+      instructorsResponse.data.filter((user) => user.type === "instructor");
       setCourses(coursesResponse.data.courses || []);
-      console.log(coursesResponse.data.courses);
       setLoading(false);
     } catch (error) {
       setError("Error fetching instructors and courses.");
@@ -85,6 +73,7 @@ const StudentManagementPage = () => {
         filters,
       });
       setStudents(response.data.students || []);
+      setFilteredStudents(response.data.students || []);
       setLoading(false);
     } catch (error) {
       setError("Error fetching students.");
@@ -93,32 +82,66 @@ const StudentManagementPage = () => {
   };
 
   const handleFilterChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    const updatedFilters = {
+      ...filters,
+      [name]: type === "checkbox" ? checked : value,
+    };
+    setFilters(updatedFilters);
+    filterStudents(updatedFilters);
   };
-  useEffect(() => {
-    fetchStudents();
-  }, [filters]);
+
+  const filterStudents = (filters) => {
+    let filteredStudents = students;
+
+    if (filters.cnic.trim() !== "") {
+      filteredStudents = filteredStudents.filter((student) =>
+        student.cnic.includes(filters.cnic.trim())
+      );
+    }
+
+    if (filters.phone.trim() !== "") {
+      filteredStudents = filteredStudents.filter((student) =>
+        student.phone.includes(filters.phone.trim())
+      );
+    }
+
+    if (filters.course !== "") {
+      filteredStudents = filteredStudents.filter(
+        (student) => student.course === filters.course
+      );
+    }
+
+    if (filters.instructor !== "") {
+      filteredStudents = filteredStudents.filter(
+        (student) => student.instructor === filters.instructor
+      );
+    }
+
+    if (filters.feeDue) {
+      filteredStudents = filteredStudents.filter((student) => {
+        const unpaidFees = student.fees.some((fee) => !fee.paidDate);
+        return unpaidFees;
+      });
+    }
+
+    setFilteredStudents(filteredStudents);
+  };
 
   const handleInstructorChange = (e) => {
     const selectedInstructor = e.currentTarget.value;
     setFormData({ ...formData, instructor: selectedInstructor });
     setFilteredCourses(
-      courses.filter((course) => {
-        console.log(course.instructor._id, selectedInstructor);
-
-        if (
-          course.instructor._id === selectedInstructor &&
+      courses.filter(
+        (course) =>
+          course.instructor === selectedInstructor &&
           course.status === "ongoing"
-        ) {
-          console.log(course);
-          return course;
-        }
-      })
+      )
     );
   };
 
   const handleCourseDurationChange = (e) => {
-    const courseDuration = e.target.value;
+    const courseDuration = parseInt(e.target.value);
     const fees = generateFees(formData.courseStartDate, courseDuration);
 
     setFormData({
@@ -168,15 +191,12 @@ const StudentManagementPage = () => {
 
   const handleFeeDueChange = () => {
     setFilters({ ...filters, feeDue: !filters.feeDue });
+    filterStudents({ ...filters, feeDue: !filters.feeDue });
   };
 
   const updateFees = async (id, updatedFees) => {
     try {
-      await axios.post("/api/staff", {
-        action: "updateFees",
-        id,
-        fees: updatedFees,
-      });
+      await axios.put(`/api/students/${id}/fees`, { fees: updatedFees });
       fetchStudents();
     } catch (error) {
       setError("Error updating fees.");
@@ -275,32 +295,32 @@ const StudentManagementPage = () => {
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">Student Management</h1>
+    <div className="container mx-auto">
+      <h1 className="text-2xl font-bold my-4">Student Management</h1>
 
-      {error && (
-        <Alert color="failure" className="mb-4">
-          {error}
-        </Alert>
-      )}
-
-      <div className="mb-4 flex space-x-4">
-        <TextInput
-          placeholder="Search by CNIC"
+      {/* Filters */}
+      <div className="flex space-x-4 my-4">
+        <input
+          type="text"
           name="cnic"
           value={filters.cnic}
           onChange={handleFilterChange}
+          placeholder="CNIC"
+          className="border border-gray-300 rounded px-2 py-1 w-48"
         />
-        <TextInput
-          placeholder="Search by Phone"
+        <input
+          type="text"
           name="phone"
           value={filters.phone}
           onChange={handleFilterChange}
+          placeholder="Phone"
+          className="border border-gray-300 rounded px-2 py-1 w-48"
         />
-        <Select
+        <select
           name="course"
           value={filters.course}
           onChange={handleFilterChange}
+          className="border border-gray-300 rounded px-2 py-1 w-48"
         >
           <option value="">All Courses</option>
           {courses.map((course) => (
@@ -308,11 +328,12 @@ const StudentManagementPage = () => {
               {course.courseName}
             </option>
           ))}
-        </Select>
-        <Select
+        </select>
+        <select
           name="instructor"
           value={filters.instructor}
           onChange={handleFilterChange}
+          className="border border-gray-300 rounded px-2 py-1 w-48"
         >
           <option value="">All Instructors</option>
           {instructors.map((instructor) => (
@@ -320,71 +341,85 @@ const StudentManagementPage = () => {
               {instructor.name}
             </option>
           ))}
-        </Select>
+        </select>
         <label className="flex items-center space-x-2">
           <input
             type="checkbox"
+            name="feeDue"
             checked={filters.feeDue}
             onChange={handleFeeDueChange}
+            className="form-checkbox h-5 w-5 text-blue-600"
           />
-          <span>Fee Due</span>
+          <span className="text-gray-700">Fee Due</span>
         </label>
-        <Button onClick={fetchStudents}>
-          {loading ? <Spinner size="sm" /> : "Search"}
-        </Button>
       </div>
 
-      {loading ? (
-        <Spinner size="lg" />
-      ) : (
-        <Table hoverable={true}>
-          <Table.Head>
-            <Table.HeadCell>Student Name</Table.HeadCell>
-            <Table.HeadCell>CNIC</Table.HeadCell>
-            <Table.HeadCell>Phone</Table.HeadCell>
-            <Table.HeadCell>Course</Table.HeadCell>
-            <Table.HeadCell>Instructor</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body className="divide-y">
-            {students.map((student) => (
-              <Table.Row key={student._id} className="bg-white">
-                <Table.Cell>{student.name}</Table.Cell>
-                <Table.Cell>{student.cnic}</Table.Cell>
-                <Table.Cell>{student.phone}</Table.Cell>
-                <Table.Cell>
-                  {courses.map((course) => {
-                    if (student.course === course._id) return course.courseName;
-                  })}
-                </Table.Cell>
-                <Table.Cell>
-                  {" "}
-                  {instructors.map((instructor) => {
-                    if (student.instructor === instructor._id)
-                      return instructor.name;
-                  })}
-                </Table.Cell>
-                <Table.Cell>
-                  <Button
+      {/* Student List */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white border border-gray-300">
+          <thead>
+            <tr className="bg-gray-100 border-b border-gray-300">
+              <th className="border-r border-gray-300 px-4 py-2">Name</th>
+              <th className="border-r border-gray-300 px-4 py-2">CNIC</th>
+              <th className="border-r border-gray-300 px-4 py-2">Phone</th>
+              <th className="border-r border-gray-300 px-4 py-2">Course</th>
+              <th className="border-r border-gray-300 px-4 py-2">Instructor</th>
+              <th className="border-r border-gray-300 px-4 py-2">Fee Status</th>
+              <th className="border-gray-300 px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredStudents.map((student) => (
+              <tr key={student._id}>
+                <td className="border-r border-gray-300 px-4 py-2">
+                  {student.name}
+                </td>
+                <td className="border-r border-gray-300 px-4 py-2">
+                  {student.cnic}
+                </td>
+                <td className="border-r border-gray-300 px-4 py-2">
+                  {student.phone}
+                </td>
+                <td className="border-r border-gray-300 px-4 py-2">
+                  {student.course}
+                </td>
+                <td className="border-r border-gray-300 px-4 py-2">
+                  {student.instructor}
+                </td>
+                <td className="border-r border-gray-300 px-4 py-2">
+                  {student.fees.some((fee) => !fee.paidDate) ? "Due" : "Paid"}
+                </td>
+                <td className="px-4 py-2">
+                  <button
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
                     onClick={() => handleEditStudent(student)}
-                    className="mr-2 bg-blue-600 hover:bg-blue-500 text-white"
                   >
                     Edit
-                  </Button>
-                </Table.Cell>
-              </Table.Row>
+                  </button>
+                  <button
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded"
+                    onClick={() => handleDeleteStudent(student._id)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
             ))}
-          </Table.Body>
-        </Table>
-      )}
+          </tbody>
+        </table>
+      </div>
 
-      <Button
-        className="fixed bottom-4 right-4 bg-green-600 hover:bg-green-500 text-white"
-        onClick={handleAddStudent}
-      >
-        Add Student
-      </Button>
+      {/* Add Student Button */}
+      <div className="mt-4">
+        <button
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          onClick={handleAddStudent}
+        >
+          Add Student
+        </button>
+      </div>
 
+      {/* Modal for adding/editing student */}
       <Modal show={showModal} onClose={() => setShowModal(false)}>
         <Modal.Header>
           {editingStudentId ? "Update Student" : "Add Student"}
@@ -401,7 +436,6 @@ const StudentManagementPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                required
                 placeholder="Student Name"
               />
             </div>
@@ -415,7 +449,6 @@ const StudentManagementPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, guardianName: e.target.value })
                 }
-                required
                 placeholder="Guardian Name"
               />
             </div>
@@ -429,7 +462,6 @@ const StudentManagementPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, cnic: e.target.value })
                 }
-                required
                 placeholder="CNIC"
               />
             </div>
@@ -443,7 +475,6 @@ const StudentManagementPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                required
                 placeholder="Phone"
               />
             </div>
@@ -457,7 +488,6 @@ const StudentManagementPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, guardianPhone: e.target.value })
                 }
-                required
                 placeholder="Guardian Phone"
               />
             </div>
@@ -468,7 +498,6 @@ const StudentManagementPage = () => {
                 name="instructor"
                 value={formData.instructor}
                 onChange={handleInstructorChange}
-                required
               >
                 <option value="" disabled>
                   Select Instructor
@@ -522,7 +551,6 @@ const StudentManagementPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, classStartTime: e.target.value })
                 }
-                required
               />
             </div>
             <div className="mb-4">
@@ -608,7 +636,11 @@ const StudentManagementPage = () => {
           </form>
         </Modal.Body>
       </Modal>
+
+      {/* Error Message */}
+      {error && <p className="text-red-500">{error}</p>}
     </div>
   );
 };
+
 export default StudentManagementPage;
