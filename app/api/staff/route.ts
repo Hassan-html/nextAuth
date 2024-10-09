@@ -89,21 +89,28 @@ export const POST = async (request: Request) => {
       return NextResponse.json({ message: "Student deleted successfully" });
     } else if (action === "fetchStudents") {
       const { filters } = data;
-      const query: any = {};
+      let query: any = {};
 
       if (filters) {
-        console.log(filters);
         if (filters.cnic) query["cnic"] = filters.cnic;
         if (filters.phone) query["phone"] = filters.phone;
         if (filters.course) query["course"] = filters.course;
         if (filters.instructor) query["instructor"] = filters.instructor;
-        if (filters.feeDue) {
-          query["fees.paidDate"] = { $exists: false };
-          query["fees.feesDate"] = { $lt: new Date() };
-        }
       }
 
-      const students = await Student.find(query);
+      let students = await Student.find(query);
+
+      // Sort students by name (example sorting, adjust as needed)
+      students = students.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Apply additional filter for feeDue if requested
+      if (filters && filters.feeDue) {
+        students = students.filter((student) =>
+          student.fees.some(
+            (fee: any) => !fee.paidDate && new Date(fee.feesDate) < new Date()
+          )
+        );
+      }
 
       return NextResponse.json({ students });
     } else if (action === "updateFees") {
@@ -114,7 +121,7 @@ export const POST = async (request: Request) => {
       return NextResponse.json({ message: "Invalid action" }, { status: 400 });
     }
   } catch (error: any) {
-    console.log(error);
+    console.error("Error handling request:", error);
     return NextResponse.json(
       { message: "Error handling request", error },
       { status: 500 }

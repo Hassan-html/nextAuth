@@ -303,16 +303,37 @@ const StudentManagementPage = () => {
           onChange={handleFilterChange}
         >
           <option value="">All Courses</option>
-          {courses.map((course) => (
-            <option key={course._id} value={course._id}>
-              {course.courseName}
-            </option>
-          ))}
+
+          {filters.instructor
+            ? courses.map((course, index) => {
+                if (course.instructor._id == filters.instructor) {
+                  return (
+                    <option key={course._id} value={course._id}>
+                      {course.courseName}--
+                      {course.courseStartTime}
+                    </option>
+                  );
+                } else {
+                  return (
+                    <h1 key={index}>
+                      {course.instructor._id},{filters.instructor}
+                    </h1>
+                  );
+                }
+              })
+            : courses.map((course) => (
+                <option key={course._id} value={course._id}>
+                  {course.courseName}
+                </option>
+              ))}
         </Select>
         <Select
           name="instructor"
           value={filters.instructor}
-          onChange={handleFilterChange}
+          onChange={(e) => {
+            filters.course = "";
+            handleFilterChange(e);
+          }}
         >
           <option value="">All Instructors</option>
           {instructors.map((instructor) => (
